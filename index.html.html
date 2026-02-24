@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet"
+ href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+
+<style>
+html,body{margin:0;height:100%;}
+#map{height:100%;}
+
+.signalWrap{
+ display:flex;
+ flex-direction:column;
+ align-items:center;
+}
+
+.timeText{
+ font-size:9px;
+ color:white;
+ text-shadow:0 0 3px black;
+ margin-bottom:2px;
+}
+
+.gauge{
+ width:20px;
+ height:3px;
+ margin-bottom:2px;
+ background:#300;
+}
+
+.pedSignal{
+ width:16px;
+ height:40px;
+ background:#111;
+ border-radius:4px;
+ padding:3px;
+ display:flex;
+ flex-direction:column;
+ justify-content:space-between;
+}
+
+.light{
+ width:12px;
+ height:12px;
+ border-radius:50%;
+ background:#300;
+ margin:auto;
+}
+
+.red{background:red;}
+.green{background:#00ff88;}
+.blink{opacity:0.2;}
+</style>
+</head>
+
+<body>
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<script>
+
+// ===== データ（基準時刻追加） =====
+
+const intersections={
+a:{
+ center:[36.081246,140.115064],
+ start:"07:23:58",
+ cycle:[{type:"縦",duration:34},{type:"間",duration:19},{type:"横",duration:61},{type:"間",duration:26}]
+},
+c:{
+ center:[36.076570,140.123876],
+ start:"07:30:00",
+ cycle:[{type:"縦",duration:76},{type:"間",duration:19},{type:"横",duration:21},{type:"間",duration:24}]
+},
+f:{
+ center:[36.067278,140.132438],
+ start:"07:34:35",
+ cycle:[{type:"縦",duration:80},{type:"間",duration:19},{type:"横",duration:31},{type:"間",duration:8}]
+},
+h:{
+ center:[36.060625,140.141941],
+ start:"07:39:54",
+ cycle:[{type:"縦",duration:79},{type:"間",duration:17},{type:"横",duration:36},{type:"間",duration:8}]
+}
+};
+
+
+// ===== 地図 =====
+
+const map=L.map('map').setView([36.076570,140.123876],17);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+ attribution:'© OpenStreetMap'
+}).addTo(map);
+
+
+// ===== 時刻差計算 =====
+
+function secondsSinceStart(startTime,total){
+
+ const now=new Date();
+
+ const [h,m,s]=startTime.split(":").map(Number);
+
+ const base=new Date(
+  now.getFullYear(),
+  now.getMonth(),
+  now.getDate(),
+  h,m,s
+ );
+
+ let diff=(now-base)/1000;
+
+ if(diff<0) diff+=86400; // 日跨ぎ対応
+
+ return diff%total;
+}
+
+
+// ===== 信号生成 =====
+
+function createSignal(){
+
+ const wrap=document.createElement("div");
+ wrap.className="signalWrap";
+
+ const time=document.createElement("div");
+ time.className="timeText";
+
+ const gauge=document.createElement("div");
+ gauge.className="gauge";
+
+ const body=document.createElement("div");
+ body.className="pedSignal";
+
+ const red=document.createElement("div");
+ red.className="light";
+
+ const green=document.createElement("div");
+ green.className="light";
+
+ body.appendChild(red);
+ body.appendChild(green);
+
+ wrap.appendChild(time);
+ wrap.appendChild(gauge);
+ wrap.appendChild(body);
+
+ return {wrap,red,green,gauge,time};
+}
+
+
+// ===== 45度回転配置 =====
+
+function rotatedOffsets(){
+
+ const d=0.00008;
+ const base=[[ d,0],[-d,0],[0, d],[0,-d]];
+ const angle=45*Math.PI/180;
+
+ return base.map(([x,y])=>{
+  const rx=x*Math.cos(angle)-y*Math.sin(angle);
+  const ry=x*Math.sin(angle)+y*Math.cos(angle);
+  return [rx,ry];
+ });
+}
+
+
+const allMarkers=[];
+
+Object.values(intersections).forEach(intersection=>{
+
+ const offsets=rotatedOffsets();
+
+ offsets.forEach((off,i)=>{
+
+  const dir=i<2?"縦":"横";
+  const s=createSignal();
+
+  const marker=L.marker([
+   intersection.center[0]+off[0],
+   intersection.center[1]+off[1]
+  ],{
+   icon:L.divIcon({html:s.wrap,iconSize:[30,70],className:""})
+  }).addTo(map);
+
+  const total=intersection.cycle.reduce((a,b)=>a+b.duration,0);
+
+  allMarkers.push({
+   marker,signal:s,dir,
+   cycle:intersection.cycle,
+   total,start:intersection.start
+  });
+
+ });
+
+});
+
+
+// ===== 更新 =====
+
+setInterval(()=>{
+
+ allMarkers.forEach(obj=>{
+
+  const elapsed=secondsSinceStart(obj.start,obj.total);
+
+  let acc=0,phase;
+
+  for(let c of obj.cycle){
+   acc+=c.duration;
+   if(elapsed<acc){
+    phase={type:c.type,remain:acc-elapsed,duration:c.duration};
+    break;
+   }
+  }
+
+  const s=obj.signal;
+  s.red.className="light";
+  s.green.className="light";
+
+  let color="red";
+
+  if(phase.type==="縦" && obj.dir==="縦"){
+   s.green.classList.add("green");
+   color="#00ff88";
+   if(phase.remain<=5 && Math.floor(Date.now()/300)%2===0){
+    s.green.classList.add("blink");
+   }
+  }
+  else if(phase.type==="横" && obj.dir==="横"){
+   s.green.classList.add("green");
+   color="#00ff88";
+   if(phase.remain<=5 && Math.floor(Date.now()/300)%2===0){
+    s.green.classList.add("blink");
+   }
+  }
+  else{
+   s.red.classList.add("red");
+   color="red";
+  }
+
+  const ratio=phase.remain/phase.duration;
+
+  s.gauge.style.background=
+   `linear-gradient(to right, ${color} ${ratio*100}%, #222 ${ratio*100}%)`;
+
+  s.time.textContent=Math.ceil(phase.remain);
+
+ });
+
+},200);
+
+</script>
+</body>
+</html>
