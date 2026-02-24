@@ -3,77 +3,70 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=10.0, user-scalable=yes">
-<title>Pedestrian Signal Map</title>
+<title>Pedestrian Signals</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 <style>
-html, body {
-  margin: 0;
-  height: 100%;
-}
+html, body { margin:0; height:100%; }
+#map { width:100%; height:100%; }
 
-#map {
-  width: 100%;
-  height: 100%;
-}
-
-.signal-wrapper {
+.intersection {
   position: relative;
-  width: 40px;
-  height: 100px;
+  width: 140px;
+  height: 140px;
   transform-origin: center;
 }
 
-.signal-box {
-  width: 100%;
-  height: 100%;
-  background: #222;
-  border-radius: 8px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-around;
-  align-items: center;
-  padding: 5px 0;
+.signal {
+  position: absolute;
+  width: 30px;
+  height: 70px;
+  background:#222;
+  border-radius:6px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:space-around;
+  padding:4px 0;
 }
 
 .light {
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  background: #111;
+  width:18px;
+  height:18px;
+  border-radius:50%;
+  background:#111;
 }
 
-.red { background: red; }
-.green { background: #00ff00; }
+.red{ background:red; }
+.green{ background:#00ff00; }
 
-.blink {
-  animation: blink 1s infinite;
+.blink{
+  animation:blink 1s infinite;
 }
 
-@keyframes blink {
-  0% { opacity: 1; }
-  50% { opacity: 0.2; }
-  100% { opacity: 1; }
+@keyframes blink{
+  0%{opacity:1;}
+  50%{opacity:0.2;}
+  100%{opacity:1;}
 }
 
-.gauge {
-  position: absolute;
-  top: -12px;
-  left: 0;
-  height: 6px;
-  background: red;
+.gauge{
+  position:absolute;
+  top:-10px;
+  left:0;
+  height:5px;
 }
 
-.timer {
-  position: absolute;
-  top: -28px;
-  width: 100%;
-  text-align: center;
-  font-size: 10px;
-  color: black;
-  font-weight: bold;
+.timer{
+  position:absolute;
+  top:-22px;
+  width:100%;
+  font-size:9px;
+  text-align:center;
+  font-weight:bold;
+  color:black;
 }
 </style>
 </head>
@@ -82,109 +75,127 @@ html, body {
 <div id="map"></div>
 
 <script>
-const map = L.map('map').setView([36.081246, 140.115064], 15);
+const map = L.map('map').setView([36.081246,140.115064],15);
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  maxZoom: 19
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+  maxZoom:19
 }).addTo(map);
 
 const intersections = {
-  a: { lat:36.081246, lng:140.115064, cycle:[34,19,61,26], total:140, sync:"07:23:58"},
-  c: { lat:36.076570, lng:140.123876, cycle:[76,19,21,24], total:140, sync:"07:30:00"},
-  f: { lat:36.067278, lng:140.132438, cycle:[80,19,31,8], total:138, sync:"07:34:35"},
-  h: { lat:36.060625, lng:140.141941, cycle:[79,17,36,8], total:140, sync:"07:39:54"}
+  a:{lat:36.081246,lng:140.115064,cycle:[34,19,61,26],total:140,sync:"07:23:58"},
+  c:{lat:36.076570,lng:140.123876,cycle:[76,19,21,24],total:140,sync:"07:30:00"},
+  f:{lat:36.067278,lng:140.132438,cycle:[80,19,31,8],total:138,sync:"07:34:35"},
+  h:{lat:36.060625,lng:140.141941,cycle:[79,17,36,8],total:140,sync:"07:39:54"}
 };
 
-function secondsSinceSync(syncTime){
-  const now = new Date();
-  const [h,m,s] = syncTime.split(":").map(Number);
-  const sync = new Date();
-  sync.setHours(h,m,s,0);
-  return Math.floor((now - sync)/1000);
+function secondsSinceSync(sync){
+  const now=new Date();
+  const [h,m,s]=sync.split(":").map(Number);
+  const base=new Date();
+  base.setHours(h,m,s,0);
+  return Math.floor((now-base)/1000);
 }
 
-function createSignal(intersection){
-  const div = document.createElement("div");
-  div.className = "signal-wrapper";
+function createIntersection(data){
 
-  const box = document.createElement("div");
-  box.className = "signal-box";
+  const wrapper=document.createElement("div");
+  wrapper.className="intersection";
 
-  const red = document.createElement("div");
-  red.className = "light";
+  function createSignalBox(direction){
+    const box=document.createElement("div");
+    box.className="signal";
 
-  const green = document.createElement("div");
-  green.className = "light";
+    const red=document.createElement("div");
+    red.className="light";
 
-  box.appendChild(red);
-  box.appendChild(green);
-  div.appendChild(box);
+    const green=document.createElement("div");
+    green.className="light";
 
-  const gauge = document.createElement("div");
-  gauge.className = "gauge";
-  div.appendChild(gauge);
+    box.appendChild(red);
+    box.appendChild(green);
 
-  const timer = document.createElement("div");
-  timer.className = "timer";
-  div.appendChild(timer);
+    const gauge=document.createElement("div");
+    gauge.className="gauge";
+    box.appendChild(gauge);
 
-  const marker = L.marker([intersection.lat, intersection.lng], {
-    icon: L.divIcon({className:"", html:div})
+    const timer=document.createElement("div");
+    timer.className="timer";
+    box.appendChild(timer);
+
+    return {box,red,green,gauge,timer,direction};
+  }
+
+  const signals=[
+    createSignalBox("vertical"),
+    createSignalBox("vertical"),
+    createSignalBox("horizontal"),
+    createSignalBox("horizontal")
+  ];
+
+  signals[0].box.style.top="0px";
+  signals[0].box.style.left="55px";
+
+  signals[1].box.style.bottom="0px";
+  signals[1].box.style.left="55px";
+
+  signals[2].box.style.left="0px";
+  signals[2].box.style.top="55px";
+
+  signals[3].box.style.right="0px";
+  signals[3].box.style.top="55px";
+
+  signals.forEach(s=>wrapper.appendChild(s.box));
+
+  const marker=L.marker([data.lat,data.lng],{
+    icon:L.divIcon({className:"",html:wrapper})
   }).addTo(map);
 
   function update(){
-    const elapsed = secondsSinceSync(intersection.sync) % intersection.total;
-    const [vertical, interval1, horizontal, interval2] = intersection.cycle;
 
-    let phase, remain, duration;
+    const elapsed=secondsSinceSync(data.sync)%data.total;
+    const [v,i1,h,i2]=data.cycle;
 
-    if(elapsed < vertical){
-      phase="vertical";
-      duration=vertical;
-      remain=vertical-elapsed;
-    } else if(elapsed < vertical+interval1){
-      phase="interval";
-      duration=interval1;
-      remain=vertical+interval1-elapsed;
-    } else if(elapsed < vertical+interval1+horizontal){
-      phase="horizontal";
-      duration=horizontal;
-      remain=vertical+interval1+horizontal-elapsed;
-    } else {
-      phase="interval";
-      duration=interval2;
-      remain=intersection.total-elapsed;
+    let phase,remain,duration;
+
+    if(elapsed<v){
+      phase="vertical";duration=v;remain=v-elapsed;
+    }else if(elapsed<v+i1){
+      phase="interval";duration=i1;remain=v+i1-elapsed;
+    }else if(elapsed<v+i1+h){
+      phase="horizontal";duration=h;remain=v+i1+h-elapsed;
+    }else{
+      phase="interval";duration=i2;remain=data.total-elapsed;
     }
 
-    red.classList.remove("red");
-    green.classList.remove("green","blink");
+    signals.forEach(s=>{
+      s.red.classList.remove("red");
+      s.green.classList.remove("green","blink");
 
-    if(phase==="vertical" || phase==="horizontal"){
-      green.classList.add("green");
-      if(remain<=5){
-        green.classList.add("blink");
+      if(phase===s.direction){
+        s.green.classList.add("green");
+        if(remain<=5) s.green.classList.add("blink");
+        s.gauge.style.background="green";
+      }else{
+        s.red.classList.add("red");
+        s.gauge.style.background="red";
       }
-      gauge.style.background="green";
-    } else {
-      red.classList.add("red");
-      gauge.style.background="red";
-    }
 
-    gauge.style.width = (remain/duration*100)+"%";
-    timer.textContent = remain+"s";
+      s.gauge.style.width=(remain/duration*100)+"%";
+      s.timer.textContent=remain+"s";
+    });
   }
 
   setInterval(update,1000);
   update();
 
-  map.on("zoom", ()=>{
-    const scale = map.getZoom()/15;
-    div.style.transform = "scale("+scale+") rotate(45deg)";
+  map.on("zoom",()=>{
+    const scale=map.getZoom()/15;
+    wrapper.style.transform="scale("+scale+") rotate(45deg)";
   });
 }
 
-for(const key in intersections){
-  createSignal(intersections[key]);
+for(const k in intersections){
+  createIntersection(intersections[k]);
 }
 </script>
 
