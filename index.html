@@ -109,7 +109,7 @@ function createSignal(){
 }
 
 function rotatedOffsets(){
- const d=0.00006;
+ const d=0.00013;   // ← 広げた
  const base=[[d,0],[-d,0],[0,d],[0,-d]];
  const angle=45*Math.PI/180;
  return base.map(([x,y])=>{
@@ -193,7 +193,6 @@ const SCALE_PER_ZOOM=1.3;
 function updateScale(){
  const zoom=map.getZoom();
  const scale=Math.pow(SCALE_PER_ZOOM,zoom-BASE_ZOOM);
-
  allMarkers.forEach(obj=>{
   obj.signal.wrap.style.transform=`scale(${scale})`;
  });
