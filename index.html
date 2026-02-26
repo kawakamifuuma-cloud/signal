@@ -17,33 +17,33 @@ html,body{margin:0;height:100%;}
 }
 
 .timeText{
- font-size:9px;
+ font-size:7px;
  color:white;
- text-shadow:0 0 3px black;
- margin-bottom:2px;
+ text-shadow:0 0 2px black;
+ margin-bottom:1px;
 }
 
 .gauge{
- width:20px;
- height:3px;
- margin-bottom:2px;
+ width:14px;
+ height:2px;
+ margin-bottom:1px;
  background:#300;
 }
 
 .pedSignal{
- width:16px;
- height:40px;
+ width:12px;
+ height:28px;
  background:#111;
- border-radius:4px;
- padding:3px;
+ border-radius:3px;
+ padding:2px;
  display:flex;
  flex-direction:column;
  justify-content:space-between;
 }
 
 .light{
- width:12px;
- height:12px;
+ width:8px;
+ height:8px;
  border-radius:50%;
  background:#300;
  margin:auto;
@@ -109,7 +109,7 @@ function createSignal(){
 }
 
 function rotatedOffsets(){
- const d=0.00008;
+ const d=0.00006;
  const base=[[d,0],[-d,0],[0,d],[0,-d]];
  const angle=45*Math.PI/180;
  return base.map(([x,y])=>{
@@ -186,9 +186,6 @@ setInterval(()=>{
   s.time.textContent=Math.ceil(phase.remain);
  });
 },200);
-
-
-// ===== ここが重要 =====
 
 const BASE_ZOOM=17;
 const SCALE_PER_ZOOM=1.3;
