@@ -7,16 +7,7 @@
 
 <style>
 html,body{margin:0;height:100%;}
-#map{
- height:100%;
- transform:rotate(-120deg);
- transform-origin:center center;
-}
-
-.leaflet-marker-pane{
- transform:rotate(120deg);
- transform-origin:center center;
-}
+#map{height:100%;}
 
 .signalWrap{
  display:flex;
@@ -71,8 +62,6 @@ html,body{margin:0;height:100%;}
 
 <script>
 
-// ===== データ =====
-
 const intersections={
 a:{center:[36.081246,140.115064],base:"07:23:58",cycle:[34,19,61,26]},
 c:{center:[36.076570,140.123876],base:"07:30:00",cycle:[76,19,21,24]},
@@ -80,35 +69,19 @@ f:{center:[36.067278,140.132438],base:"07:34:35",cycle:[80,19,31,8]},
 h:{center:[36.060625,140.141941],base:"07:39:54",cycle:[79,17,36,8]}
 };
 
-// ===== 地図 =====
-
 const map=L.map('map').setView([36.076570,140.123876],17);
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
  attribution:'© OpenStreetMap'
 }).addTo(map);
 
-
-// ===== 基準時刻 =====
-
 function getBaseDate(str){
  const now=new Date();
  const [h,m,s]=str.split(":");
- return new Date(
-  now.getFullYear(),
-  now.getMonth(),
-  now.getDate(),
-  parseInt(h),
-  parseInt(m),
-  parseInt(s)
- );
+ return new Date(now.getFullYear(),now.getMonth(),now.getDate(),h,m,s);
 }
 
-
-// ===== 信号作成 =====
-
 function createSignal(){
-
  const wrap=document.createElement("div");
  wrap.className="signalWrap";
 
@@ -123,13 +96,11 @@ function createSignal(){
 
  const red=document.createElement("div");
  red.className="light";
-
  const green=document.createElement("div");
  green.className="light";
 
  body.appendChild(red);
  body.appendChild(green);
-
  wrap.appendChild(time);
  wrap.appendChild(gauge);
  wrap.appendChild(body);
@@ -137,14 +108,10 @@ function createSignal(){
  return {wrap,red,green,gauge,time};
 }
 
-
-// ===== 45度回転配置 =====
-
 function rotatedOffsets(){
  const d=0.00008;
  const base=[[d,0],[-d,0],[0,d],[0,-d]];
  const angle=45*Math.PI/180;
-
  return base.map(([x,y])=>{
   const rx=x*Math.cos(angle)-y*Math.sin(angle);
   const ry=x*Math.sin(angle)+y*Math.cos(angle);
@@ -152,19 +119,14 @@ function rotatedOffsets(){
  });
 }
 
-
-// ===== 配置 =====
-
 const allMarkers=[];
 
 Object.values(intersections).forEach(intersection=>{
-
  const offsets=rotatedOffsets();
  const baseDate=getBaseDate(intersection.base);
  const total=intersection.cycle.reduce((a,b)=>a+b,0);
 
  offsets.forEach((off,i)=>{
-
   const dir=i<2?"縦":"横";
   const s=createSignal();
 
@@ -174,33 +136,18 @@ Object.values(intersections).forEach(intersection=>{
   ],{
    icon:L.divIcon({
     html:s.wrap,
-    iconSize:null,
     className:""
    })
   }).addTo(map);
 
-  allMarkers.push({
-   marker,
-   signal:s,
-   dir,
-   cycle:intersection.cycle,
-   total,
-   baseDate
-  });
-
+  allMarkers.push({marker,signal:s,dir,cycle:intersection.cycle,total,baseDate});
  });
-
 });
 
-
-// ===== フェーズ計算 =====
-
 function getPhase(obj){
-
  const now=new Date();
  const diff=(now-obj.baseDate)/1000;
  const t=((diff%obj.total)+obj.total)%obj.total;
-
  const [v,b1,h,b2]=obj.cycle;
 
  if(t<v) return {type:"縦",remain:v-t,duration:v};
@@ -209,13 +156,8 @@ function getPhase(obj){
  return {type:"間",remain:obj.total-t,duration:b2};
 }
 
-
-// ===== 更新 =====
-
 setInterval(()=>{
-
  allMarkers.forEach(obj=>{
-
   const phase=getPhase(obj);
   const s=obj.signal;
 
@@ -224,21 +166,14 @@ setInterval(()=>{
 
   let color="red";
 
-  if(phase.type==="縦" && obj.dir==="縦"){
+  if((phase.type==="縦"&&obj.dir==="縦")||
+     (phase.type==="横"&&obj.dir==="横")){
    s.green.classList.add("green");
    color="#00ff88";
-   if(phase.remain<=5 && Math.floor(Date.now()/300)%2===0){
+   if(phase.remain<=5&&Math.floor(Date.now()/300)%2===0){
     s.green.classList.add("blink");
    }
-  }
-  else if(phase.type==="横" && obj.dir==="横"){
-   s.green.classList.add("green");
-   color="#00ff88";
-   if(phase.remain<=5 && Math.floor(Date.now()/300)%2===0){
-    s.green.classList.add("blink");
-   }
-  }
-  else{
+  }else{
    s.red.classList.add("red");
    color="red";
   }
@@ -249,27 +184,22 @@ setInterval(()=>{
    `linear-gradient(to right, ${color} ${ratio*100}%, #222 ${ratio*100}%)`;
 
   s.time.textContent=Math.ceil(phase.remain);
-
  });
-
 },200);
 
 
-// ===== ズーム連動スケール =====
+// ===== ここが重要 =====
 
 const BASE_ZOOM=17;
-const SCALE_PER_ZOOM=1.35;
+const SCALE_PER_ZOOM=1.3;
 
 function updateScale(){
-
  const zoom=map.getZoom();
  const scale=Math.pow(SCALE_PER_ZOOM,zoom-BASE_ZOOM);
 
  allMarkers.forEach(obj=>{
-  obj.signal.wrap.style.transform=
-   `scale(${scale})`;
+  obj.signal.wrap.style.transform=`scale(${scale})`;
  });
-
 }
 
 map.on("zoom",updateScale);
