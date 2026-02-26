@@ -61,7 +61,7 @@ html,body{margin:0;height:100%;}
 
 <script>
 
-// ===== 周期 + 基準時刻 =====
+// ===== データ =====
 
 const intersections={
 a:{
@@ -95,13 +95,11 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
 }).addTo(map);
 
 
-// ===== 基準時刻をDate化 =====
+// ===== 基準時刻 =====
 
-function getBaseDate(timeStr){
-
+function getBaseDate(str){
  const now=new Date();
- const [h,m,s]=timeStr.split(":");
-
+ const [h,m,s]=str.split(":");
  return new Date(
   now.getFullYear(),
   now.getMonth(),
@@ -146,7 +144,7 @@ function createSignal(){
 }
 
 
-// ===== 45度オフセット =====
+// ===== 45度回転配置 =====
 
 function rotatedOffsets(){
 
@@ -185,6 +183,7 @@ Object.values(intersections).forEach(intersection=>{
    icon:L.divIcon({
     html:s.wrap,
     iconSize:[30,70],
+    iconAnchor:[15,35],
     className:""
    })
   }).addTo(map);
@@ -203,7 +202,7 @@ Object.values(intersections).forEach(intersection=>{
 });
 
 
-// ===== 現実同期フェーズ計算 =====
+// ===== フェーズ計算（現実同期） =====
 
 function getPhase(obj){
 
@@ -263,6 +262,38 @@ setInterval(()=>{
  });
 
 },200);
+
+
+// ===== ズーム連動サイズ変更 =====
+
+const BASE_ZOOM=17;
+const BASE_W=30;
+const BASE_H=70;
+const SCALE_PER_ZOOM=1.35;
+
+function updateSize(){
+
+ const zoom=map.getZoom();
+ const scale=Math.pow(SCALE_PER_ZOOM,zoom-BASE_ZOOM);
+
+ const newW=BASE_W*scale;
+ const newH=BASE_H*scale;
+
+ allMarkers.forEach(obj=>{
+  obj.marker.setIcon(
+   L.divIcon({
+    html:obj.signal.wrap,
+    iconSize:[newW,newH],
+    iconAnchor:[newW/2,newH/2],
+    className:""
+   })
+  );
+ });
+
+}
+
+map.on("zoomend",updateSize);
+updateSize();
 
 </script>
 </body>
