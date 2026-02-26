@@ -7,12 +7,22 @@
 
 <style>
 html,body{margin:0;height:100%;}
-#map{height:100%;}
+#map{
+ height:100%;
+ transform:rotate(-120deg);
+ transform-origin:center center;
+}
+
+.leaflet-marker-pane{
+ transform:rotate(120deg);
+ transform-origin:center center;
+}
 
 .signalWrap{
  display:flex;
  flex-direction:column;
  align-items:center;
+ transform-origin:center center;
 }
 
 .timeText{
@@ -64,26 +74,10 @@ html,body{margin:0;height:100%;}
 // ===== データ =====
 
 const intersections={
-a:{
- center:[36.081246,140.115064],
- base:"07:23:58",
- cycle:[34,19,61,26]
-},
-c:{
- center:[36.076570,140.123876],
- base:"07:30:00",
- cycle:[76,19,21,24]
-},
-f:{
- center:[36.067278,140.132438],
- base:"07:34:35",
- cycle:[80,19,31,8]
-},
-h:{
- center:[36.060625,140.141941],
- base:"07:39:54",
- cycle:[79,17,36,8]
-}
+a:{center:[36.081246,140.115064],base:"07:23:58",cycle:[34,19,61,26]},
+c:{center:[36.076570,140.123876],base:"07:30:00",cycle:[76,19,21,24]},
+f:{center:[36.067278,140.132438],base:"07:34:35",cycle:[80,19,31,8]},
+h:{center:[36.060625,140.141941],base:"07:39:54",cycle:[79,17,36,8]}
 };
 
 // ===== 地図 =====
@@ -147,7 +141,6 @@ function createSignal(){
 // ===== 45度回転配置 =====
 
 function rotatedOffsets(){
-
  const d=0.00008;
  const base=[[d,0],[-d,0],[0,d],[0,-d]];
  const angle=45*Math.PI/180;
@@ -157,7 +150,6 @@ function rotatedOffsets(){
   const ry=x*Math.sin(angle)+y*Math.cos(angle);
   return [rx,ry];
  });
-
 }
 
 
@@ -182,8 +174,7 @@ Object.values(intersections).forEach(intersection=>{
   ],{
    icon:L.divIcon({
     html:s.wrap,
-    iconSize:[30,70],
-    iconAnchor:[15,35],
+    iconSize:null,
     className:""
    })
   }).addTo(map);
@@ -202,7 +193,7 @@ Object.values(intersections).forEach(intersection=>{
 });
 
 
-// ===== フェーズ計算（現実同期） =====
+// ===== フェーズ計算 =====
 
 function getPhase(obj){
 
@@ -264,36 +255,25 @@ setInterval(()=>{
 },200);
 
 
-// ===== ズーム連動サイズ変更 =====
+// ===== ズーム連動スケール =====
 
 const BASE_ZOOM=17;
-const BASE_W=30;
-const BASE_H=70;
 const SCALE_PER_ZOOM=1.35;
 
-function updateSize(){
+function updateScale(){
 
  const zoom=map.getZoom();
  const scale=Math.pow(SCALE_PER_ZOOM,zoom-BASE_ZOOM);
 
- const newW=BASE_W*scale;
- const newH=BASE_H*scale;
-
  allMarkers.forEach(obj=>{
-  obj.marker.setIcon(
-   L.divIcon({
-    html:obj.signal.wrap,
-    iconSize:[newW,newH],
-    iconAnchor:[newW/2,newH/2],
-    className:""
-   })
-  );
+  obj.signal.wrap.style.transform=
+   `scale(${scale})`;
  });
 
 }
 
-map.on("zoomend",updateSize);
-updateSize();
+map.on("zoom",updateScale);
+updateScale();
 
 </script>
 </body>
